@@ -5,7 +5,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 import pandas as pd
 import streamlit as st
 
-# PDF Text Extraction Sathi
+# PDF Text & Image Extraction Sathi
 try:
   import pypdf
 except ImportError:
@@ -17,14 +17,15 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("🪟 BOQ Excel & PDF Measurement Extractor")
+st.title("🪟 BOQ Excel & PDF Measurement Extractor (Qty Split Engine)")
 st.write(
-    "Upload Quotation Excel (.xlsx) OR PDF (.pdf) file to automatically convert"
-    " into the horizontal MEASUREMENT sheet layout."
+    "Upload Quotation Excel (.xlsx) OR PDF (.pdf) file. If Qty > 1 (e.g., Qty=3"
+    " for W1), it automatically splits into W1A, W1B, W1C with separate blocks"
+    " & drawings."
 )
 
 # -------------------------------------------------------------
-# 1. File Upload Section (Excel + PDF Support)
+# 1. File Upload Section
 # -------------------------------------------------------------
 st.subheader("1. Upload Quotation File (.xlsx / .pdf)")
 uploaded_file = st.file_uploader(
@@ -33,11 +34,15 @@ uploaded_file = st.file_uploader(
 submit_btn = st.button("🚀 Generate MEASUREMENT Sheet", type="primary")
 
 
+# Helper function to generate suffix letters (A, B, C...)
+def get_code_suffix(index):
+  return chr(65 + index)  # 0 -> A, 1 -> B, 2 -> C ...
+
+
 # -------------------------------------------------------------
-# 2. PDF Parsing Logic
+# 2. PDF Parsing Logic (With Qty Split)
 # -------------------------------------------------------------
 def parse_pdf_quotation(file_bytes):
-  """PDF Madhun Window Codes, Specs ani Dimensions Read Karnyasathi."""
   if pypdf is None:
     st.error(
         "PDF processing library 'pypdf' nahiye. Kripaya `pip install pypdf`"
@@ -46,58 +51,89 @@ def parse_pdf_quotation(file_bytes):
     return []
 
   reader = pypdf.PdfReader(file_bytes)
-  full_text = ""
-  for page in reader.pages:
-    full_text += page.extract_text() + "\n"
-
   extracted_items = []
 
-  # Regex pattern to find Window Codes & Details from PDF text
-  code_blocks = re.split(r"(Code\s*:\s*)", full_text, flags=re.IGNORECASE)
+  for page_num, page in enumerate(reader.pages):
+    page_text = page.extract_text() or ""
 
-  for i in range(1, len(code_blocks), 2):
-    block_text = code_blocks[i] + code_blocks[i + 1]
+    page_images = []
+    try:
+      for img_obj in page.images:
+        page_images.append(img_obj.data)
+    except Exception:
+      pass
 
-    code_match = re.search(r"Code\s*:\s*([^\n\r]+)", block_text)
-    name_match = re.search(r"Name\s*:\s*([^\n\r]+)", block_text)
-    loc_match = re.search(r"Location\s*:\s*([^\n\r]+)", block_text)
-    size_match = re.search(
-        r"Size\s*:\s*W\s*=\s*([\d\.]+);\s*H\s*=\s*([\d\.]+)", block_text
-    )
-    prof_match = re.search(r"Profile System\s*:\s*([^\n\r]+)", block_text)
-    glass_match = re.search(r"Glass\s*:\s*([^\n\r]+)", block_text)
+    code_blocks = re.split(r"(Code\s*:\s*)", page_text, flags=re.IGNORECASE)
 
-    code = code_match.group(1).strip() if code_match else ""
-    name = name_match.group(1).strip() if name_match else ""
-    location = loc_match.group(1).strip() if loc_match else ""
-    w_val = float(size_match.group(1)) if size_match else ""
-    h_val = float(size_match.group(2)) if size_match else ""
-    prof_sys = prof_match.group(1).strip() if prof_match else ""
-    glass = glass_match.group(1).strip() if glass_match else ""
+    for i in range(1, len(code_blocks), 2):
+      block_text = code_blocks[i] + code_blocks[i + 1]
 
-    if code:
-      extracted_items.append({
-          "code": code,
-          "name": name,
-          "location": location,
-          "w_val": w_val,
-          "h_val": h_val,
-          "prof_sys": prof_sys,
-          "glass": glass,
-          "mesh": "NO",
-          "lock": "MULTI POINT",
-          "remarks": "",
-          "image": None,
-      })
+      code_match = re.search(r"Code\s*:\s*([^\n\r]+)", block_text)
+      name_match = re.search(r"Name\s*:\s*([^\n\r]+)", block_text)
+      loc_match = re.search(r"Location\s*:\s*([^\n\r]+)", block_text)
+      size_match = re.search(
+          r"Size\s*:\s*W\s*=\s*([\d\.]+);\s*H\s*=\s*([\d\.]+)", block_text
+      )
+      prof_match = re.search(r"Profile System\s*:\s*([^\n\r]+)", block_text)
+      glass_match = re.search(r"Glass\s*:\s*([^\n\r]+)", block_text)
+      qty_match = re.search(
+          r"Quantity\s*:\s*(\d+)", block_text, flags=re.IGNORECASE
+      )
+
+      base_code = code_match.group(1).strip() if code_match else ""
+      name = name_match.group(1).strip() if name_match else ""
+      location = loc_match.group(1).strip() if loc_match else ""
+      w_val = float(size_match.group(1)) if size_match else ""
+      h_val = float(size_match.group(2)) if size_match else ""
+      prof_sys = prof_match.group(1).strip() if prof_match else ""
+      glass = glass_match.group(1).strip() if glass_match else ""
+      qty_val = int(qty_match.group(1)) if qty_match else 1
+
+      matched_img_data = page_images[0] if page_images else None
+
+      if base_code:
+        # If Qty > 1, create W1A, W1B, W1C...
+        if qty_val > 1:
+          for q in range(qty_val):
+            suffix = get_code_suffix(q)
+            split_code = f"{base_code}{suffix}"
+            extracted_items.append({
+                "code": split_code,
+                "name": name,
+                "location": location,
+                "w_val": w_val,
+                "h_val": h_val,
+                "qty": 1,
+                "prof_sys": prof_sys,
+                "glass": glass,
+                "mesh": "NO",
+                "lock": "MULTI POINT",
+                "remarks": "",
+                "image_data": matched_img_data,
+            })
+        else:
+          extracted_items.append({
+              "code": base_code,
+              "name": name,
+              "location": location,
+              "w_val": w_val,
+              "h_val": h_val,
+              "qty": 1,
+              "prof_sys": prof_sys,
+              "glass": glass,
+              "mesh": "NO",
+              "lock": "MULTI POINT",
+              "remarks": "",
+              "image_data": matched_img_data,
+          })
 
   return extracted_items
 
 
 # -------------------------------------------------------------
-# 3. Excel Processing Logic
+# 3. Excel Processing Logic (With Qty Split W1A, W1B...)
 # -------------------------------------------------------------
 def parse_excel_quotation(file_bytes):
-  """Excel WorkBook Madhun Data ani Drawing Images Extract Karnyasathi."""
   wb_source = openpyxl.load_workbook(file_bytes, data_only=True)
   extracted_items = []
 
@@ -109,7 +145,7 @@ def parse_excel_quotation(file_bytes):
       c1_val = str(src_ws.cell(r, 1).value or "").strip()
 
       if c1_val == "Code :":
-        code = str(src_ws.cell(r, 5).value or "").strip()
+        base_code = str(src_ws.cell(r, 5).value or "").strip()
         size_str = str(
             src_ws.cell(r, 12).value or src_ws.cell(r, 13).value or ""
         )
@@ -131,6 +167,21 @@ def parse_excel_quotation(file_bytes):
           except Exception:
             pass
 
+        # Quantity Extraction
+        qty_val = 1
+        for search_qty_r in range(r, min(r + 20, src_ws.max_row + 1)):
+          lbl_qty = str(src_ws.cell(search_qty_r, 8).value or "").strip()
+          if lbl_qty == "Quantity":
+            try:
+              qty_val = int(
+                  src_ws.cell(search_qty_r, 11).value
+                  or src_ws.cell(search_qty_r, 12).value
+                  or 1
+              )
+            except Exception:
+              qty_val = 1
+            break
+
         mesh_type, lock_type, remarks_desc = "NO", "", ""
 
         for offset in range(10, 22):
@@ -151,28 +202,49 @@ def parse_excel_quotation(file_bytes):
           if "Remarks :" in cell_rem:
             remarks_desc = cell_rem.replace("Remarks :", "").strip()
 
-        matched_img = None
+        matched_img_data = None
         for img in images:
           anchor = img.anchor
           if hasattr(anchor, "_from"):
             img_row = anchor._from.row + 1
             if r <= img_row <= r + 22 and img_row > 5:
-              matched_img = img
+              matched_img_data = img._data()
               break
 
-        extracted_items.append({
-            "code": code,
-            "name": name,
-            "location": location,
-            "w_val": w_val,
-            "h_val": h_val,
-            "prof_sys": prof_sys,
-            "glass": glass,
-            "mesh": mesh_type,
-            "lock": lock_type,
-            "remarks": remarks_desc,
-            "image": matched_img,
-        })
+        # Qty Split Logic (W1 -> W1A, W1B, W1C...)
+        if qty_val > 1:
+          for q in range(qty_val):
+            suffix = get_code_suffix(q)
+            split_code = f"{base_code}{suffix}"
+            extracted_items.append({
+                "code": split_code,
+                "name": name,
+                "location": location,
+                "w_val": w_val,
+                "h_val": h_val,
+                "qty": 1,
+                "prof_sys": prof_sys,
+                "glass": glass,
+                "mesh": mesh_type,
+                "lock": lock_type,
+                "remarks": remarks_desc,
+                "image_data": matched_img_data,
+            })
+        else:
+          extracted_items.append({
+              "code": base_code,
+              "name": name,
+              "location": location,
+              "w_val": w_val,
+              "h_val": h_val,
+              "qty": 1,
+              "prof_sys": prof_sys,
+              "glass": glass,
+              "mesh": mesh_type,
+              "lock": lock_type,
+              "remarks": remarks_desc,
+              "image_data": matched_img_data,
+          })
 
   return extracted_items
 
@@ -251,14 +323,14 @@ def build_measurement_excel(items):
 
     ws_out.cell(row=curr_row, column=1, value=s_no)
     ws_out.cell(row=curr_row, column=2, value="")
-    ws_out.cell(row=curr_row, column=3, value=item["code"])
+    ws_out.cell(row=curr_row, column=3, value=item["code"])  # Unique Code W1A, W1B...
     ws_out.cell(row=curr_row, column=4, value=item["name"])
     ws_out.cell(row=curr_row, column=5, value=item["location"])
     ws_out.cell(row=curr_row, column=6, value=item["prof_sys"])
     ws_out.cell(row=curr_row, column=7, value=item["w_val"])
     ws_out.cell(row=curr_row, column=8, value=item["h_val"])
 
-    # Formula
+    # Area Formula
     c_sq = ws_out.cell(
         row=curr_row,
         column=9,
@@ -266,7 +338,6 @@ def build_measurement_excel(items):
     )
     c_sq.number_format = "0.00"
 
-    # Thickness regex parse
     glass_thick = ""
     if item["glass"]:
       m_thick = re.search(
@@ -290,10 +361,10 @@ def build_measurement_excel(items):
       else:
         cell.alignment = align_left
 
-    # Drawing Image Add kara (fakta Excel upload sathi)
-    if item["image"]:
+    # Drawing Image Placement per unique code
+    if item["image_data"]:
       try:
-        img_bytes = io.BytesIO(item["image"]._data())
+        img_bytes = io.BytesIO(item["image_data"])
         img_copy = openpyxl.drawing.image.Image(img_bytes)
         ws_out.add_image(img_copy, f"C{curr_row + 2}")
       except Exception:
@@ -337,7 +408,7 @@ if submit_btn:
     file_bytes = io.BytesIO(uploaded_file.read())
     uploaded_file.seek(0)
 
-    with st.spinner("Processing file & extracting items..."):
+    with st.spinner("Processing file, splitting Qty & generating images..."):
       if uploaded_file.name.endswith(".pdf"):
         extracted_items = parse_pdf_quotation(file_bytes)
       else:
@@ -346,8 +417,8 @@ if submit_btn:
       if extracted_items:
         excel_out, count = build_measurement_excel(extracted_items)
         st.success(
-            f"Successfully processed {uploaded_file.name} ({count} items"
-            " extracted)!"
+            f"Successfully generated MEASUREMENT sheet ({count} total unique"
+            " items split)!"
         )
 
         out_filename = f"MEASUREMENT_{uploaded_file.name.rsplit('.', 1)[0]}.xlsx"
