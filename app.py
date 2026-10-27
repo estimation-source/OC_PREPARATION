@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import io
-import math
 import os
 import re
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import openpyxl
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -25,7 +24,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# 2. Header and Sidebar Toggle Button Styling
+# 2. Header & Sidebar Styling
 # ============================================================
 st.markdown(
     """
@@ -50,169 +49,34 @@ st.markdown(
         box-shadow: 0px 3px 8px rgba(0,0,0,0.3) !important;
     }
 
-    button[data-testid="stSidebarCollapsedControl"] svg,
-    button[data-testid="stSidebarNavCollapseButton"] svg {
-        fill: white !important;
-        color: white !important;
-        width: 22px !important;
-        height: 22px !important;
-    }
-
-    [data-testid="stStatusWidget"],
-    #MainMenu, 
-    footer {
+    [data-testid="stStatusWidget"], #MainMenu, footer {
         display: none !important;
         visibility: hidden !important;
-    }
-    </style>
-""",
-    unsafe_allow_html=True,
-)
-
-# ============================================================
-# 3. UI Layout & Fonts CSS
-# ============================================================
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: 'Inter', sans-serif;
-        background-color: #f4f6f9;
-        color: #334155;
-    }
-
-    .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
-        max-width: 98%;
-    }
-
-    [data-testid="stSidebar"] {
-        background-color: #f1f5f9;
-        border-right: 1px solid #e2e8f0;
-    }
-    
-    .quick-guide-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #0f172a;
-        margin-top: 15px;
-        margin-bottom: 12px;
-    }
-    
-    .quick-guide-step {
-        font-size: 13px;
-        color: #475569;
-        margin-bottom: 10px;
-        line-height: 1.4;
     }
 
     .hero-container {
         background: #ffffff;
         border-radius: 16px;
-        padding: 24px 30px;
+        padding: 20px 25px;
         border: 1px solid #e2e8f0;
         box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        margin-bottom: 24px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        margin-bottom: 20px;
     }
 
     .hero-title-text {
         font-size: 22px;
         font-weight: 800;
         color: #0f172a;
-        margin: 0;
     }
 
     .hero-sub-text {
         font-size: 13px;
         color: #64748b;
-        margin-top: 4px;
-    }
-
-    .step-title {
-        font-size: 16px;
-        font-weight: 700;
-        color: #1e293b;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    div.stButton > button[kind="primary"] {
-        background-color: #2563eb !important;
-        background: #2563eb !important;
-        border: 1px solid #2563eb !important;
-        color: #ffffff !important;
-        border-radius: 6px !important;
-        height: 38px !important;
-        padding: 0 16px !important;
-        box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2) !important;
-    }
-
-    div.stDownloadButton > button {
-        background-color: #059669 !important;
-        background: #059669 !important;
-        border: 1px solid #059669 !important;
-        color: #ffffff !important;
-        border-radius: 6px !important;
-        height: 38px !important;
-        padding: 0 16px !important;
-        box-shadow: 0 1px 2px rgba(5, 150, 105, 0.2) !important;
-    }
-
-    div.stButton > button p, div.stButton > button span,
-    div.stDownloadButton > button p, div.stDownloadButton > button span {
-        color: #ffffff !important;
-        font-weight: 500 !important;
-        font-size: 13px !important;
     }
     </style>
-    """,
+""",
     unsafe_allow_html=True,
 )
-
-
-def get_image_path(filename: str) -> str:
-    if hasattr(sys, "_MEIPASS"):
-        return os.path.join(sys._MEIPASS, filename)
-    return os.path.join(os.path.abspath("."), filename)
-
-
-# =========================================================
-# SIDEBAR
-# =========================================================
-with st.sidebar:
-    logo_file = get_image_path("logo.png")
-    if os.path.exists(logo_file):
-        col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
-        with col_s2:
-            st.image(Image.open(logo_file), width=110)
-    else:
-        st.markdown(
-            "<h2 style='text-align: center; color:#1e293b;'><b>win square</b></h2>",
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("---")
-    st.markdown(
-        "<div class='quick-guide-title'>💡 Quick Guide</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-        <div class='quick-guide-step'><b>1.</b> Upload Quotation file (.xlsx or .pdf).</div>
-        <div class='quick-guide-step'><b>2.</b> Engine groups Quantity splits (W2A, W2B... W2V) into a continuous table block.</div>
-        <div class='quick-guide-step'><b>3.</b> Single drawing image is attached at the bottom of each item group.</div>
-        <div class='quick-guide-step'><b>4.</b> Download final <b>MEASUREMENT</b> sheet.</div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 # =========================================================
 # HEADER HERO BANNER
@@ -220,10 +84,8 @@ with st.sidebar:
 st.markdown(
     """
     <div class="hero-container">
-        <div>
-            <div class="hero-title-text">OC PREPARATION Engine</div>
-            <div class="hero-sub-text">Continuous Quantity Splitting Table with Bottom Drawing Attachment</div>
-        </div>
+        <div class="hero-title-text">OC PREPARATION Engine</div>
+        <div class="hero-sub-text">Continuous Group Table Splitting (W2A, W2B... W2V) with Bottom Image Attachment</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -262,7 +124,7 @@ def extract_glass_thickness(glass_text: Any) -> str:
 
 
 # ============================================================
-# Parsing Logic (Grouped Items for Grouped Rows + Single Drawing)
+# Parsing Engine (PDF & Excel)
 # ============================================================
 
 def parse_pdf_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
@@ -532,9 +394,9 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # Write contiguous rows for this quantity group (e.g., W2A, W2B... W2V)[cite: 9]
+        # 1. Write contiguous rows for this split group (e.g. W2A to W2V without gaps)[cite: 8]
         for sub_item in group["rows"]:
-            ws_out.row_dimensions[curr_row].height = 22
+            ws_out.row_dimensions[curr_row].height = 20
 
             ws_out.cell(row=curr_row, column=1, value=s_no)
             ws_out.cell(row=curr_row, column=2, value="")
@@ -573,7 +435,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # Place single drawing image below the contiguous group rows[cite: 9]
+        # 2. Add single drawing image at the end of the entire group[cite: 8]
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
@@ -595,8 +457,8 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             except Exception:
                 pass
 
-        # Give gap after drawing image before starting next item group[cite: 9]
-        curr_row += 24
+        # Space allowance for drawing image before next group starts
+        curr_row += 20
 
     col_widths = {
         "A": 6,
@@ -628,8 +490,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
 # ============================================================
 
 st.markdown(
-    "<div class='step-title'>📐 Upload Quotation File (.xlsx / .pdf)</div>",
-    unsafe_allow_html=True,
+    "### 📐 Upload Quotation File (.xlsx / .pdf)"
 )
 
 uploaded_file = st.file_uploader(
@@ -645,7 +506,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
         file_bytes = io.BytesIO(uploaded_file.read())
         uploaded_file.seek(0)
 
-        with st.spinner("Processing file, grouping continuous split rows & placing drawing..."):
+        with st.spinner("Generating contiguous table rows & placing drawing at bottom..."):
             if uploaded_file.name.endswith(".pdf"):
                 extracted_groups = parse_pdf_quotation(file_bytes)
             else:
@@ -654,7 +515,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
             if extracted_groups:
                 excel_out, count = build_measurement_excel(extracted_groups)
                 st.success(
-                    f"Successfully generated MEASUREMENT sheet with continuous split rows ({count} total items split)!"
+                    f"Successfully generated MEASUREMENT sheet ({count} total contiguous items)!"
                 )
 
                 out_filename = (
