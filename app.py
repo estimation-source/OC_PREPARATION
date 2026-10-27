@@ -394,7 +394,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # 1. Write contiguous rows for this split group (e.g., W2A to W2V without gaps)
+        # 1. Write ALL split rows (W2A, W2B ... W2V) continuously without ANY extra empty gap[cite: 7, 8]
         for sub_item in group["rows"]:
             ws_out.row_dimensions[curr_row].height = 20
 
@@ -435,7 +435,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # 2. Add single drawing image at the end of the entire group
+        # 2. Add single drawing image at the end of ALL split rows for this item[cite: 7, 8]
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
@@ -457,8 +457,8 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             except Exception:
                 pass
 
-        # Space allowance for drawing image before next group starts
-        curr_row += 20
+        # 3. Leave space for drawing image ONLY AFTER the full continuous group is printed[cite: 7, 8]
+        curr_row += 18
 
     col_widths = {
         "A": 6,
@@ -506,7 +506,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
         file_bytes = io.BytesIO(uploaded_file.read())
         uploaded_file.seek(0)
 
-        with st.spinner("Generating contiguous table rows & placing drawing at bottom..."):
+        with st.spinner("Generating continuous table rows & placing drawing at bottom..."):
             if uploaded_file.name.endswith(".pdf"):
                 extracted_groups = parse_pdf_quotation(file_bytes)
             else:
