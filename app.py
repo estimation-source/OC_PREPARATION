@@ -17,75 +17,174 @@ import streamlit as st
 # 1. Streamlit Page Config
 # ============================================================
 st.set_page_config(
-    page_title="WIN-SQUARE | OC PREPARATION Engine",
+    page_title="Win Square | OC PREPARATION Engine",
     layout="wide",
     page_icon="🪟",
     initial_sidebar_state="expanded",
 )
 
 # ============================================================
-# 2. Header & Sidebar Styling
+# 2. UI Layout, Theme & Custom CSS (Matches Glass PI Dashboard)
 # ============================================================
 st.markdown(
     """
     <style>
-    header[data-testid="stHeader"] {
-        z-index: 99999 !important;
-        background: transparent !important;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        background-color: #ffffff;
+        color: #334155;
     }
 
-    button[data-testid="stSidebarCollapsedControl"],
-    button[data-testid="stSidebarNavCollapseButton"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        background-color: #FF4B4B !important;
-        color: white !important;
-        border-radius: 8px !important;
-        position: fixed !important;
-        top: 12px !important;
-        left: 12px !important;
-        z-index: 999999 !important;
-        box-shadow: 0px 3px 8px rgba(0,0,0,0.3) !important;
+    /* Streamlit Main Container */
+    .main .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 95%;
     }
 
-    [data-testid="stStatusWidget"], #MainMenu, footer {
-        display: none !important;
-        visibility: hidden !important;
+    /* Sidebar Clean Layout */
+    [data-testid="stSidebar"] {
+        background-color: #f8fafc;
+        border-right: 1px solid #e2e8f0;
     }
 
-    .hero-container {
+    /* Sidebar Logo Container */
+    .sidebar-logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px 0;
+    }
+
+    .quick-guide-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 15px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .quick-guide-step {
+        font-size: 13px;
+        color: #475569;
+        margin-bottom: 10px;
+        line-height: 1.5;
+    }
+
+    /* Hero Banner Card Styling (Matches Reference Image) */
+    .hero-card-container {
         background: #ffffff;
-        border-radius: 16px;
-        padding: 20px 25px;
+        border-radius: 18px;
+        padding: 30px 40px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        margin-bottom: 30px;
     }
 
-    .hero-title-text {
-        font-size: 22px;
+    .hero-card-title {
+        font-size: 26px;
         font-weight: 800;
         color: #0f172a;
+        margin: 0;
+        letter-spacing: -0.3px;
     }
 
-    .hero-sub-text {
-        font-size: 13px;
+    .hero-card-sub {
+        font-size: 14px;
         color: #64748b;
+        margin-top: 6px;
+        font-weight: 500;
+    }
+
+    /* Step Title Styling */
+    .step-header-text {
+        font-size: 16px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Primary Action Buttons */
+    div.stButton > button[kind="primary"] {
+        background-color: #2563eb !important;
+        background: #2563eb !important;
+        border: 1px solid #2563eb !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        height: 40px !important;
+        padding: 0 20px !important;
+        font-weight: 600 !important;
+    }
+
+    div.stDownloadButton > button {
+        background-color: #059669 !important;
+        background: #059669 !important;
+        border: 1px solid #059669 !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        height: 40px !important;
+        padding: 0 20px !important;
+        font-weight: 600 !important;
     }
     </style>
 """,
     unsafe_allow_html=True,
 )
 
+
+def get_image_path(filename: str) -> str:
+    if hasattr(sys, "_MEIPASS"):
+        return os.path.join(sys._MEIPASS, filename)
+    return os.path.join(os.path.abspath("."), filename)
+
+
 # =========================================================
-# HEADER HERO BANNER
+# SIDEBAR (BRANDING & QUICK GUIDE)
+# =========================================================
+with st.sidebar:
+    logo_file = get_image_path("logo.png")
+    if os.path.exists(logo_file):
+        col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
+        with col_s2:
+            st.image(Image.open(logo_file), width=120)
+    else:
+        st.markdown(
+            "<h2 style='text-align: center; color:#0f172a;'><b>win square</b></h2>",
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;'>", unsafe_allow_html=True)
+    
+    st.markdown(
+        "<div class='quick-guide-title'>💡 Quick Guide</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+        <div class='quick-guide-step'><b>1.</b> Upload Quotation BOQ file (.xlsx or .pdf).</div>
+        <div class='quick-guide-step'><b>2.</b> Automated Quantity Splitting (e.g., W2 -> W2A, W2B... W2U).</div>
+        <div class='quick-guide-step'><b>3.</b> Aligns single drawing at the bottom of each continuous group.</div>
+        <div class='quick-guide-step'><b>4.</b> Download structured <b>MEASUREMENT</b> Excel sheet.</div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# =========================================================
+# HERO DASHBOARD BANNER
 # =========================================================
 st.markdown(
     """
-    <div class="hero-container">
-        <div class="hero-title-text">OC PREPARATION Engine</div>
-        <div class="hero-sub-text">Clean Quantity Splitting (W2A, W2B ... W2U) with Bottom Image Alignment</div>
+    <div class="hero-card-container">
+        <div class="hero-card-title">OC PREPARATION Engine</div>
+        <div class="hero-card-sub">Automated BOQ Measurement Extraction, Continuous Quantity Splitting & Drawing Alignment</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -404,7 +503,6 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # Write ALL split rows (W2A, W2B ... W2U) continuously without extra empty gaps[cite: 8]
         for sub_item in group["rows"]:
             ws_out.row_dimensions[curr_row].height = 20
 
@@ -445,7 +543,6 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # Add single drawing image at the bottom of the entire group[cite: 8]
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
@@ -467,7 +564,6 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             except Exception:
                 pass
 
-        # Space allowance for drawing image AFTER all rows in group are printed[cite: 8]
         curr_row += 18
 
     col_widths = {
@@ -496,25 +592,31 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
 
 
 # ============================================================
-# MAIN UI CONTROLLER
+# MAIN UI CONTROLLER (MATCHES DASHBOARD LAYOUT)
 # ============================================================
 
-st.markdown("### 📐 Upload Quotation File (.xlsx / .pdf)")
+st.markdown(
+    "<div class='step-header-text'>📁 Step 1: Upload BOQ Excel Files</div>",
+    unsafe_allow_html=True,
+)
 
 uploaded_file = st.file_uploader(
     "Upload File (.xlsx, .xlsm, .pdf)",
     type=["xlsx", "xlsm", "pdf"],
     key="oc_prep_uploader",
+    label_visibility="collapsed",
 )
 
-if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
+st.markdown("<br>", unsafe_allow_html=True)
+
+if st.button("🚀 Process & Generate MEASUREMENT Sheet", type="primary"):
     if not uploaded_file:
-        st.error("Please upload an Excel or PDF Quotation file first!")
+        st.error("Please upload a Quotation / BOQ file first!")
     else:
         file_bytes = io.BytesIO(uploaded_file.read())
         uploaded_file.seek(0)
 
-        with st.spinner("Generating single-letter split codes (W2A to W2U) & aligned drawing..."):
+        with st.spinner("Processing file & generating MEASUREMENT sheet..."):
             if uploaded_file.name.endswith(".pdf"):
                 extracted_groups = parse_pdf_quotation(file_bytes)
             else:
@@ -523,7 +625,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
             if extracted_groups:
                 excel_out, count = build_measurement_excel(extracted_groups)
                 st.success(
-                    f"Successfully generated MEASUREMENT sheet ({count} total contiguous items)!"
+                    f"Successfully generated MEASUREMENT sheet ({count} total items extracted)!"
                 )
 
                 out_filename = (
