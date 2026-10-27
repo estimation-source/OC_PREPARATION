@@ -85,7 +85,7 @@ st.markdown(
     """
     <div class="hero-container">
         <div class="hero-title-text">OC PREPARATION Engine</div>
-        <div class="hero-sub-text">Continuous Group Quantity Splitting (W2A, W2B... W2V) with Bottom Image Alignment</div>
+        <div class="hero-sub-text">Clean Quantity Splitting (W2A, W2B ... W2U) with Bottom Image Alignment</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -96,14 +96,18 @@ st.markdown(
 # ============================================================
 
 def get_code_suffix(index: int) -> str:
-    """Generates A, B, C... Z, AA, AB... for quantity splitting."""
-    result = ""
-    while True:
-        result = chr(65 + (index % 26)) + result
-        index = (index // 26) - 1
-        if index < 0:
-            break
-    return result
+    """Generates A, B, C... Z, AA, AB... cleanly."""
+    if index < 26:
+        return chr(65 + index)
+    first = chr(65 + (index // 26) - 1)
+    second = chr(65 + (index % 26))
+    return f"{first}{second}"
+
+
+def clean_base_code(raw_code: str) -> str:
+    """Removes existing trailing letters if already present in base code."""
+    code = str(raw_code).strip()
+    return code
 
 
 def extract_glass_thickness(glass_text: Any) -> str:
@@ -222,7 +226,9 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
             c1_val = str(src_ws.cell(r, 1).value or "").strip()
 
             if c1_val == "Code :":
-                base_code = str(src_ws.cell(r, 5).value or "").strip()
+                raw_code = str(src_ws.cell(r, 5).value or "").strip()
+                base_code = clean_base_code(raw_code)
+
                 size_str = str(
                     src_ws.cell(r, 12).value or src_ws.cell(r, 13).value or ""
                 )
@@ -394,7 +400,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # 1. Write ALL split rows (W2A, W2B ... W2V) continuously without ANY extra empty gap[cite: 7, 8]
+        # 1. Write ALL split rows (W2A, W2B ... W2U) continuously without extra empty gaps[cite: 9]
         for sub_item in group["rows"]:
             ws_out.row_dimensions[curr_row].height = 20
 
@@ -435,7 +441,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # 2. Add single drawing image at the end of ALL split rows for this item[cite: 7, 8]
+        # 2. Add single drawing image at the bottom of the entire group[cite: 9]
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
@@ -457,7 +463,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             except Exception:
                 pass
 
-        # 3. Leave space for drawing image ONLY AFTER the full continuous group is printed[cite: 7, 8]
+        # 3. Space allowance for drawing image AFTER all rows in group are printed
         curr_row += 18
 
     col_widths = {
@@ -489,9 +495,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
 # MAIN UI CONTROLLER
 # ============================================================
 
-st.markdown(
-    "### 📐 Upload Quotation File (.xlsx / .pdf)"
-)
+st.markdown("### 📐 Upload Quotation File (.xlsx / .pdf)")
 
 uploaded_file = st.file_uploader(
     "Upload File (.xlsx, .xlsm, .pdf)",
@@ -506,7 +510,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
         file_bytes = io.BytesIO(uploaded_file.read())
         uploaded_file.seek(0)
 
-        with st.spinner("Generating continuous table rows & placing drawing at bottom..."):
+        with st.spinner("Generating single-letter split codes (W2A to W2U) & aligned drawing..."):
             if uploaded_file.name.endswith(".pdf"):
                 extracted_groups = parse_pdf_quotation(file_bytes)
             else:
@@ -515,7 +519,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
             if extracted_groups:
                 excel_out, count = build_measurement_excel(extracted_groups)
                 st.success(
-                    f"Successfully generated MEASUREMENT sheet ({count} total contiguous items)!"
+                    f"Successfully generated MEASUREMENT sheet with single-letter codes ({count} total contiguous items)!"
                 )
 
                 out_filename = (
