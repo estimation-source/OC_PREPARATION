@@ -207,8 +207,8 @@ with st.sidebar:
     st.markdown(
         """
         <div class='quick-guide-step'><b>1.</b> Upload Quotation file (.xlsx or .pdf).</div>
-        <div class='quick-guide-step'><b>2.</b> Engine automatically extracts drawings and splits Quantity (e.g. W1 -> W1A, W1B...).</div>
-        <div class='quick-guide-step'><b>3.</b> Formats Glass Thickness (e.g. 20 MM, 5 MM).</div>
+        <div class='quick-guide-step'><b>2.</b> Engine extracts drawings, auto-resizes to fit sheet cleanly (Image 2 style).</div>
+        <div class='quick-guide-step'><b>3.</b> Splits Quantity (e.g. W1 -> W1A, W1B...) and formats Glass Thickness.</div>
         <div class='quick-guide-step'><b>4.</b> Download final <b>MEASUREMENT</b> sheet.</div>
         """,
         unsafe_allow_html=True,
@@ -222,7 +222,7 @@ st.markdown(
     <div class="hero-container">
         <div>
             <div class="hero-title-text">OC PREPARATION Engine</div>
-            <div class="hero-sub-text">Automatic Measurement Extraction, Quantity Splitting (W1A, W1B...) & Drawing Alignment</div>
+            <div class="hero-sub-text">Automatic Measurement Extraction, Drawing Resizing & Alignment</div>
         </div>
     </div>
     """,
@@ -556,15 +556,33 @@ def build_measurement_excel(items: List[Dict[str, Any]]) -> Tuple[io.BytesIO, in
             else:
                 cell.alignment = align_left
 
+        # =========================================================
+        # AUTOMATIC DRAWING RESIZING & ALIGNMENT (IMAGE 2 STYLE)
+        # =========================================================
         if item["image_data"]:
             try:
                 img_bytes = io.BytesIO(item["image_data"])
                 img_copy = openpyxl.drawing.image.Image(img_bytes)
+
+                # Set clean dimensions to match Image 2 (Width ~ 280px, Height ~ 260px)
+                max_width = 280
+                max_height = 260
+
+                orig_w, orig_h = img_copy.width, img_copy.height
+                if orig_w > 0 and orig_h > 0:
+                    ratio = min(max_width / orig_w, max_height / orig_h)
+                    img_copy.width = int(orig_w * ratio)
+                    img_copy.height = int(orig_h * ratio)
+                else:
+                    img_copy.width = max_width
+                    img_copy.height = max_height
+
                 ws_out.add_image(img_copy, f"C{curr_row + 2}")
             except Exception:
                 pass
 
-        curr_row += 18
+        # Give 28 rows gap so scaled image fits cleanly below row
+        curr_row += 28
         s_no += 1
 
     col_widths = {
@@ -614,7 +632,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
         file_bytes = io.BytesIO(uploaded_file.read())
         uploaded_file.seek(0)
 
-        with st.spinner("Processing file, splitting Qty (W1A, W1B...) & formatting thickness..."):
+        with st.spinner("Processing file, resizing drawings & formatting MEASUREMENT sheet..."):
             if uploaded_file.name.endswith(".pdf"):
                 extracted_items = parse_pdf_quotation(file_bytes)
             else:
@@ -623,7 +641,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
             if extracted_items:
                 excel_out, count = build_measurement_excel(extracted_items)
                 st.success(
-                    f"Successfully generated MEASUREMENT sheet ({count} total unique items split)!"
+                    f"Successfully generated MEASUREMENT sheet with perfectly aligned drawings ({count} items split)!"
                 )
 
                 out_filename = (
