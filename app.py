@@ -85,7 +85,7 @@ st.markdown(
     """
     <div class="hero-container">
         <div class="hero-title-text">OC PREPARATION Engine</div>
-        <div class="hero-sub-text">Continuous Group Table Splitting (W2A, W2B... W2V) with Bottom Image Attachment</div>
+        <div class="hero-sub-text">Continuous Group Quantity Splitting (W2A, W2B... W2V) with Bottom Image Alignment</div>
     </div>
     """,
     unsafe_allow_html=True,
@@ -394,7 +394,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # 1. Write contiguous rows for this split group (e.g. W2A to W2V without gaps)[cite: 8]
+        # 1. Write contiguous rows for this split group (e.g., W2A to W2V without gaps)
         for sub_item in group["rows"]:
             ws_out.row_dimensions[curr_row].height = 20
 
@@ -435,7 +435,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # 2. Add single drawing image at the end of the entire group[cite: 8]
+        # 2. Add single drawing image at the end of the entire group
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
