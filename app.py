@@ -24,7 +24,7 @@ st.set_page_config(
 )
 
 # ============================================================
-# 2. UI Layout, Theme & Custom CSS (Matches Glass PI Dashboard)
+# 2. UI Layout, Theme & Custom CSS (Matches Dashboard Design)
 # ============================================================
 st.markdown(
     """
@@ -50,12 +50,12 @@ st.markdown(
         border-right: 1px solid #e2e8f0;
     }
 
-    /* Sidebar Logo Container */
-    .sidebar-logo-container {
+    /* Sidebar Logo Alignment */
+    [data-testid="stSidebar"] [data-testid="stImage"] {
         display: flex;
         justify-content: center;
         align-items: center;
-        padding: 10px 0;
+        margin: 0 auto;
     }
 
     .quick-guide-title {
@@ -76,7 +76,7 @@ st.markdown(
         line-height: 1.5;
     }
 
-    /* Hero Banner Card Styling (Matches Reference Image) */
+    /* Hero Banner Card Styling */
     .hero-card-container {
         background: #ffffff;
         border-radius: 18px;
@@ -141,27 +141,42 @@ st.markdown(
 
 
 def get_image_path(filename: str) -> str:
+    """Finds logo file in PyInstaller temp dir or local folder."""
     if hasattr(sys, "_MEIPASS"):
         return os.path.join(sys._MEIPASS, filename)
-    return os.path.join(os.path.abspath("."), filename)
+    
+    # Try searching multiple common logo locations
+    possible_paths = [
+        os.path.join(os.path.abspath("."), filename),
+        os.path.join(os.path.abspath("."), "assets", filename),
+        os.path.join(os.path.dirname(__file__), filename) if "__file__" in globals() else filename
+    ]
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    return filename
 
 
 # =========================================================
-# SIDEBAR (BRANDING & QUICK GUIDE)
+# SIDEBAR (BRANDING LOGO & QUICK GUIDE)
 # =========================================================
 with st.sidebar:
     logo_file = get_image_path("logo.png")
+    
     if os.path.exists(logo_file):
-        col_s1, col_s2, col_s3 = st.columns([1, 2, 1])
-        with col_s2:
-            st.image(Image.open(logo_file), width=120)
+        st.image(Image.open(logo_file), width=150)
     else:
-        st.markdown(
-            "<h2 style='text-align: center; color:#0f172a;'><b>win square</b></h2>",
-            unsafe_allow_html=True,
-        )
+        # Fallback if logo file name is win_square.png or logo.png
+        alt_logo = get_image_path("win_square.png")
+        if os.path.exists(alt_logo):
+            st.image(Image.open(alt_logo), width=150)
+        else:
+            st.markdown(
+                "<h2 style='text-align: center; color:#0f172a;'><b>win square</b></h2>",
+                unsafe_allow_html=True,
+            )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 15px 0;'>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #e2e8f0; margin: 18px 0;'>", unsafe_allow_html=True)
     
     st.markdown(
         "<div class='quick-guide-title'>💡 Quick Guide</div>",
@@ -592,7 +607,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
 
 
 # ============================================================
-# MAIN UI CONTROLLER (MATCHES DASHBOARD LAYOUT)
+# MAIN UI CONTROLLER
 # ============================================================
 
 st.markdown(
