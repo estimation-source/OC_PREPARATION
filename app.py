@@ -104,9 +104,12 @@ def get_code_suffix(index: int) -> str:
     return f"{first}{second}"
 
 
-def clean_base_code(raw_code: str) -> str:
-    """Removes existing trailing letters if already present in base code."""
+def clean_base_code_for_split(raw_code: str) -> str:
+    """Strips trailing letter from base code (e.g., W2A -> W2) so splitting produces W2A, W2B... W2U."""
     code = str(raw_code).strip()
+    match = re.match(r"^(.*?\d+)[A-Za-z]$", code)
+    if match:
+        return match.group(1)
     return code
 
 
@@ -162,7 +165,7 @@ def parse_pdf_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                 r"Quantity\s*:\s*(\d+)", block_text, flags=re.IGNORECASE
             )
 
-            base_code = code_match.group(1).strip() if code_match else ""
+            raw_code = code_match.group(1).strip() if code_match else ""
             name = name_match.group(1).strip() if name_match else ""
             location = loc_match.group(1).strip() if loc_match else ""
             w_val = float(size_match.group(1)) if size_match else ""
@@ -173,12 +176,13 @@ def parse_pdf_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
 
             matched_img_data = page_images[0] if page_images else None
 
-            if base_code:
+            if raw_code:
                 sub_rows = []
                 if qty_val > 1:
+                    clean_code = clean_base_code_for_split(raw_code)
                     for q in range(qty_val):
                         suffix = get_code_suffix(q)
-                        split_code = f"{base_code}{suffix}"
+                        split_code = f"{clean_code}{suffix}"
                         sub_rows.append({
                             "code": split_code,
                             "name": name,
@@ -188,12 +192,12 @@ def parse_pdf_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                             "prof_sys": prof_sys,
                             "glass": glass,
                             "mesh": "NO",
-                            "lock": "TOUCH LOCK",
+                            "lock": "Single-point",
                             "remarks": "",
                         })
                 else:
                     sub_rows.append({
-                        "code": base_code,
+                        "code": raw_code,
                         "name": name,
                         "location": location,
                         "w_val": w_val,
@@ -201,12 +205,12 @@ def parse_pdf_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                         "prof_sys": prof_sys,
                         "glass": glass,
                         "mesh": "NO",
-                        "lock": "TOUCH LOCK",
+                        "lock": "Single-point",
                         "remarks": "",
                     })
 
                 grouped_items.append({
-                    "base_code": base_code,
+                    "base_code": raw_code,
                     "rows": sub_rows,
                     "image_data": matched_img_data,
                 })
@@ -227,7 +231,6 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
 
             if c1_val == "Code :":
                 raw_code = str(src_ws.cell(r, 5).value or "").strip()
-                base_code = clean_base_code(raw_code)
 
                 size_str = str(
                     src_ws.cell(r, 12).value or src_ws.cell(r, 13).value or ""
@@ -264,7 +267,7 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                             qty_val = 1
                         break
 
-                mesh_type, lock_type, remarks_desc = "NO", "", ""
+                mesh_type, lock_type, remarks_desc = "NO", "Single-point", ""
 
                 for offset in range(10, 22):
                     v_mesh = str(src_ws.cell(r + offset, 8).value or "")
@@ -277,7 +280,7 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                         or ""
                     )
                     if "Locking :" in v_lock:
-                        lock_type = v_lock.replace("Locking :", "").strip()
+                        lock_type = v_lock.replace("Locking :", "").strip() or "Single-point"
 
                 for search_r in range(r, min(r + 25, src_ws.max_row + 1)):
                     cell_rem = str(src_ws.cell(search_r, 8).value or "")
@@ -295,9 +298,10 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
 
                 sub_rows = []
                 if qty_val > 1:
+                    clean_code = clean_base_code_for_split(raw_code)
                     for q in range(qty_val):
                         suffix = get_code_suffix(q)
-                        split_code = f"{base_code}{suffix}"
+                        split_code = f"{clean_code}{suffix}"
                         sub_rows.append({
                             "code": split_code,
                             "name": name,
@@ -312,7 +316,7 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                         })
                 else:
                     sub_rows.append({
-                        "code": base_code,
+                        "code": raw_code,
                         "name": name,
                         "location": location,
                         "w_val": w_val,
@@ -325,7 +329,7 @@ def parse_excel_quotation(file_bytes: io.BytesIO) -> List[Dict[str, Any]]:
                     })
 
                 grouped_items.append({
-                    "base_code": base_code,
+                    "base_code": raw_code,
                     "rows": sub_rows,
                     "image_data": matched_img_data,
                 })
@@ -400,7 +404,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
     total_split_rows = 0
 
     for group in grouped_items:
-        # 1. Write ALL split rows (W2A, W2B ... W2U) continuously without extra empty gaps[cite: 9]
+        # Write ALL split rows (W2A, W2B ... W2U) continuously without extra empty gaps[cite: 8]
         for sub_item in group["rows"]:
             ws_out.row_dimensions[curr_row].height = 20
 
@@ -441,7 +445,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             s_no += 1
             total_split_rows += 1
 
-        # 2. Add single drawing image at the bottom of the entire group[cite: 9]
+        # Add single drawing image at the bottom of the entire group[cite: 8]
         if group["image_data"]:
             try:
                 img_bytes = io.BytesIO(group["image_data"])
@@ -463,7 +467,7 @@ def build_measurement_excel(grouped_items: List[Dict[str, Any]]) -> Tuple[io.Byt
             except Exception:
                 pass
 
-        # 3. Space allowance for drawing image AFTER all rows in group are printed
+        # Space allowance for drawing image AFTER all rows in group are printed[cite: 8]
         curr_row += 18
 
     col_widths = {
@@ -519,7 +523,7 @@ if st.button("🚀 Generate MEASUREMENT Sheet", type="primary"):
             if extracted_groups:
                 excel_out, count = build_measurement_excel(extracted_groups)
                 st.success(
-                    f"Successfully generated MEASUREMENT sheet with single-letter codes ({count} total contiguous items)!"
+                    f"Successfully generated MEASUREMENT sheet ({count} total contiguous items)!"
                 )
 
                 out_filename = (
